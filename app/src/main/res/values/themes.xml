@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+
+    <style name="Theme.Estakada" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Android 12+ системный splash -->
+        <item name="android:windowSplashScreenAnimatedIcon">@null</item>
+        <item name="android:windowSplashScreenBackground">#0D47A1</item>
+    </style>
+
+</resources>
