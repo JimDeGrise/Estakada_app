@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -49,6 +50,7 @@ import java.nio.charset.StandardCharsets
 private sealed class Dest(val route: String, val title: String) {
     data object Splash : Dest("splash", "Estakada")
     data object Registry : Dest("registry", "Реестр")
+    data object Info : Dest("info", "Сведения")
     data object Tools : Dest("tools", "Инструменты")
     data object Import : Dest("import", "Импорт CSV")
     data object Edit : Dest("edit", "Редактор")
@@ -150,7 +152,7 @@ fun AppShell(
         }
     }
 
-    val tabs = listOf(Dest.Registry, Dest.Tools)
+    val tabs = listOf(Dest.Registry, Dest.Info, Dest.Tools)
 
     Scaffold(
         topBar = {
@@ -159,6 +161,7 @@ fun AppShell(
                     title = {
                         val title = when (currentDestination?.route) {
                             Dest.Registry.route -> Dest.Registry.title
+                            Dest.Info.route -> Dest.Info.title
                             Dest.Tools.route -> Dest.Tools.title
                             Dest.Import.route -> Dest.Import.title
                             Dest.Edit.route -> Dest.Edit.title
@@ -172,6 +175,7 @@ fun AppShell(
         },
         bottomBar = {
             val showBottom = currentDestination?.route == Dest.Registry.route ||
+                currentDestination?.route == Dest.Info.route ||
                 currentDestination?.route == Dest.Tools.route
 
             if (showBottom) {
@@ -193,6 +197,7 @@ fun AppShell(
                             icon = {
                                 when (dest) {
                                     Dest.Registry -> Icon(Icons.Filled.List, contentDescription = "Реестр")
+                                    Dest.Info -> Icon(Icons.Filled.Info, contentDescription = "Сведения")
                                     Dest.Tools -> Icon(Icons.Filled.Settings, contentDescription = "Инструменты")
                                     else -> {}
                                 }
@@ -328,6 +333,13 @@ fun AppShell(
                         exportStatus = null
                         navController.navigate(Dest.Edit.route)
                     }
+                )
+            }
+
+            composable(Dest.Info.route) {
+                SummaryScreen(
+                    rowsFlow = graph.db.registryDao().observeAll(),
+                    onClose = { navController.popBackStack() }
                 )
             }
 
