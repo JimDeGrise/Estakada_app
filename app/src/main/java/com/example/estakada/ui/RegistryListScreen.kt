@@ -2,16 +2,23 @@ package com.example.estakada.ui
 
 import android.content.Context
 import android.content.Intent
+//import android.graphics.drawable.Icon
 import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.estakada.data.local.AppDb
@@ -22,6 +29,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
+import java.util.Vector
+import androidx.compose.material3.Icon // Для отрисовки иконки
+import androidx.compose.material3.IconButton // Для самой кнопки-иконки
+
 
 private fun parseArea(raw: String?): Double? {
     val s = raw?.trim().orEmpty()
@@ -126,7 +137,7 @@ fun RegistryListScreen(
             value = query,
             onValueChange = { query = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Поиск (ФИО / телефон / помещение / паспорт / plate)") },
+            label = { Text("Поиск (ФИО / телефон / помещение / паспорт / титул)") },
             singleLine = true
         )
 
@@ -194,24 +205,36 @@ fun RegistryListScreen(
             onDismissRequest = { selectedRow = null },
             confirmButton = {
                 Row {
-                    TextButton(
+                    IconButton(
                         onClick = {
                             selectedRow = null
                             onEdit(r.stableId)
                         }
-                    ) { Text("Редактировать") }
+                    ) {
+                        // imageVector пишется с маленькой буквы
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Редактировать"
+                        )
+                    }
 
-                    TextButton(onClick = { selectedRow = null }) { Text("Закрыть") }
+                    IconButton(onClick = { selectedRow = null }) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Закрыть"
+                        )
+                    }
                 }
             },
             title = { Text("Карточка") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("ФИО: ${r.ownerName ?: "—"}")
                     Text("Этаж: ${r.floor ?: "—"}")
                     Text("Помещение: ${r.objectNumber ?: "—"}")
-                    Text("Площадь: ${r.sizesRaw ?: "—"}")
+                    Text("Площадь: ${r.sizesRaw ?: "—"} кв.м.")
                     Text("Доля: ${r.share?.let { fmt3(it) } ?: "—"}")
-                    Text("ФИО: ${r.ownerName ?: "—"}")
+
 
                     val phoneText = r.phone?.trim().orEmpty()
                     if (phoneText.isNotBlank()) {
@@ -224,7 +247,7 @@ fun RegistryListScreen(
                     }
 
                     Text("Паспорт: ${r.passport ?: "—"}")
-                    Text("Plate: ${r.plate ?: "—"}")
+                    Text("Титул: ${r.plate ?: "—"}")
                     Text("Примечание: ${r.note ?: "—"}")
                 }
             }
@@ -239,9 +262,24 @@ fun RegistryListScreen(
         AlertDialog(
             onDismissRequest = { ownerDialog = null },
             confirmButton = {
-                TextButton(onClick = { ownerDialog = null }) { Text("Закрыть") }
+                IconButton(onClick = { ownerDialog = null }) {
+                    Icon(imageVector = Icons.Default.Close,
+                    contentDescription = "Закрыть")
+                }
+
             },
-            title = { Text("Все объекты") },
+            title = {
+                Row(
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp) // Отступ между иконкой и текстом
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info, // Или любая другая иконка, например, Lists
+                        contentDescription = null // Текст заголовка уже описывает суть
+                    )
+                    Text("Все объекты")
+                }
+                 },
             text = {
                 Column(
                     modifier = Modifier
@@ -264,7 +302,7 @@ fun RegistryListScreen(
                         }
                     }
 
-                    if (data.plates.isNotEmpty()) Text("Plate: ${data.plates.joinToString(", ")}")
+                    if (data.plates.isNotEmpty()) Text("Титул: ${data.plates.joinToString(", ")}")
 
                     Divider()
 
@@ -343,8 +381,12 @@ private fun RegistryRowCard(
                 }
 
                 if (showOwnerButton) {
-                    TextButton(onClick = onClickOwner) {
-                        Text("Все объекты")
+                    IconButton(onClick = onClickOwner) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Все объекты"
+                        )
+
                     }
                 }
             }
