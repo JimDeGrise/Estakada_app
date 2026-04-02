@@ -13,6 +13,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.estakada.data.local.AppDb
 import com.example.estakada.data.local.RegistryRowEntity
+import com.example.estakada.util.PhoneFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -20,6 +21,16 @@ import java.util.UUID
 
 private fun parseShare(raw: String): Double? =
     raw.trim().replace(',', '.').toDoubleOrNull()
+
+/** Normalize objectNumber: uppercase the first Cyrillic letter, keep rest as-is. */
+private fun normalizeObjectNumber(raw: String): String {
+    val t = raw.trim()
+    if (t.isEmpty()) return t
+    return t[0].uppercaseChar() + t.substring(1)
+}
+
+/** Pattern: single uppercase Cyrillic letter, dash, one or more digits. E.g. "А-12" */
+private val OBJECT_NUMBER_RE = Regex("""^[А-ЯЁ]-\d+$""")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +57,8 @@ fun RegistryEditScreen(
     var note by remember { mutableStateOf("") }
 
     var status by remember { mutableStateOf<String?>(null) }
+    var phoneError by remember { mutableStateOf<String?>(null) }
+    var objectNumberWarning by remember { mutableStateOf<String?>(null) }
 
     // удаление (защита вводом "DEL")
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -56,6 +69,7 @@ fun RegistryEditScreen(
     LaunchedEffect(stableId) {
         loading = true
         status = null
+        phoneError = null
 
         val entity = withContext(Dispatchers.IO) {
             stableId?.let { db.registryDao().getById(it) }
@@ -70,8 +84,27 @@ fun RegistryEditScreen(
             shareText = entity.share?.toString()?.replace('.', ',') ?: ""
             passport = entity.passport.orEmpty()
             plate = entity.plate.orEmpty()
-            phone = entity.phone.orEmpty()
             note = entity.note.orEmpty()
+
+            // Backfill: if phone is set but not in storage format, try to normalize and rewrite
+            val rawPhone = entity.phone
+            if (!rawPhone.isNullOrEmpty()) {
+                val storedPhone = if (PhoneFormat.isStorage(rawPhone)) {
+                    rawPhone
+                } else {
+                    val normalized = PhoneFormat.normalize(rawPhone)
+                    if (normalized != null) {
+                        // Rewrite in DB with correct storage format
+                        withContext(Dispatchers.IO) {
+                            db.registryDao().upsert(entity.copy(phone = normalized))
+                        }
+                        normalized
+                    } else {
+                        rawPhone // can't normalize — keep as-is for display
+                    }
+                }
+                phone = PhoneFormat.toDisplay(storedPhone)
+            }
         }
 
         loading = false
@@ -109,7 +142,21 @@ fun RegistryEditScreen(
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(value = floor, onValueChange = { floor = it }, label = { Text("Этаж") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = objectNumber, onValueChange = { objectNumber = it }, label = { Text("Помещение") }, modifier = Modifier.fillMaxWidth())
+        Column {
+            OutlinedTextField(
+                value = objectNumber,
+                onValueChange = { objectNumber = it; objectNumberWarning = null },
+                label = { Text("Помещение") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            if (objectNumberWarning != null) {
+                Text(
+                    objectNumberWarning!!,
+                    color = MaterialTheme.colorScheme.secondary,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
         OutlinedTextField(value = sizesRaw, onValueChange = { sizesRaw = it }, label = { Text("Площадь (например 29,9)") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(
             value = shareText,
@@ -118,9 +165,31 @@ fun RegistryEditScreen(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             modifier = Modifier.fillMaxWidth()
         )
-        OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Телефон") }, modifier = Modifier.fillMaxWidth())
+
+        // Телефон с валидацией
+        Column {
+            OutlinedTextField(
+                value = phone,
+                onValueChange = {
+                    phone = it
+                    phoneError = null
+                },
+                label = { Text("Телефон") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                modifier = Modifier.fillMaxWidth(),
+                isError = phoneError != null
+            )
+            if (phoneError != null) {
+                Text(
+                    phoneError!!,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+
         OutlinedTextField(value = passport, onValueChange = { passport = it }, label = { Text("Паспорт") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = plate, onValueChange = { plate = it }, label = { Text("Plate") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = plate, onValueChange = { plate = it }, label = { Text("Титул") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(value = note, onValueChange = { note = it }, label = { Text("Примечание") }, modifier = Modifier.fillMaxWidth())
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -128,6 +197,25 @@ fun RegistryEditScreen(
                 modifier = buttonMod.weight(1f),
                 enabled = saveEnabled,
                 onClick = {
+                    // Validate/normalize phone
+                    val rawPhone = phone.trim()
+                    val storedPhone: String? = if (rawPhone.isEmpty()) {
+                        null
+                    } else {
+                        val normalized = PhoneFormat.normalize(rawPhone)
+                        if (normalized == null) {
+                            phoneError = "Некорректный формат. Пример: +7 (952) 814-38-08"
+                            return@Button
+                        }
+                        normalized
+                    }
+
+                    // Normalize objectNumber: uppercase first letter
+                    val normalizedObjectNumber = normalizeObjectNumber(objectNumber)
+                    objectNumberWarning = if (normalizedObjectNumber.isNotEmpty() && !OBJECT_NUMBER_RE.matches(normalizedObjectNumber)) {
+                        "Рекомендуемый формат: буква-цифра (например А-12)"
+                    } else null
+
                     scope.launch {
                         status = "Сохранение..."
                         try {
@@ -138,13 +226,13 @@ fun RegistryEditScreen(
                                 stableId = id,
                                 sourceRowId = original?.sourceRowId,
                                 floor = floor.trim().ifEmpty { null },
-                                objectNumber = objectNumber.trim().ifEmpty { null },
+                                objectNumber = normalizedObjectNumber.ifEmpty { null },
                                 sizesRaw = sizesRaw.trim().ifEmpty { null },
                                 ownerName = ownerName.trim().ifEmpty { null },
                                 share = shareText.trim().let { t -> if (t.isBlank()) null else parseShare(t) },
                                 passport = passport.trim().ifEmpty { null },
                                 plate = plate.trim().ifEmpty { null },
-                                phone = phone.trim().ifEmpty { null },
+                                phone = storedPhone,
                                 note = note.trim().ifEmpty { null },
                                 updatedAt = now
                             )

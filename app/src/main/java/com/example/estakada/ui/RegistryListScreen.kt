@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.estakada.data.local.AppDb
 import com.example.estakada.data.local.RegistryRowEntity
+import com.example.estakada.util.PhoneFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -241,7 +242,7 @@ fun RegistryListScreen(
                         TextButton(
                             contentPadding = PaddingValues(0.dp),
                             onClick = { dialPhone(context, phoneText) }
-                        ) { Text("Телефон: $phoneText") }
+                        ) { Text("Телефон: ${PhoneFormat.toDisplay(phoneText)}") }
                     } else {
                         Text("Телефон: —")
                     }
@@ -298,7 +299,7 @@ fun RegistryListScreen(
                             TextButton(
                                 contentPadding = PaddingValues(0.dp),
                                 onClick = { dialPhone(context, p) }
-                            ) { Text(p) }
+                            ) { Text(PhoneFormat.toDisplay(p)) }
                         }
                     }
 
@@ -365,7 +366,7 @@ private fun RegistryRowCard(
                     )
 
                     val secondary = listOfNotNull(
-                        row.phone?.takeIf { it.isNotBlank() }?.let { "тел: $it" },
+                        row.phone?.takeIf { it.isNotBlank() }?.let { "тел: ${PhoneFormat.toDisplay(it)}" },
                         row.share?.let { "доля: ${fmt3(it)}" }
                     ).joinToString(" • ")
 

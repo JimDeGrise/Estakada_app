@@ -54,6 +54,7 @@ private sealed class Dest(val route: String, val title: String) {
     data object Tools : Dest("tools", "Инструменты")
     data object Import : Dest("import", "Импорт CSV")
     data object Edit : Dest("edit", "Редактор")
+    data object OwnerEdit : Dest("owner_edit", "Собственник")
 }
 
 private fun csvEscape(value: String): String {
@@ -166,6 +167,7 @@ fun AppShell(
                             Dest.Import.route -> Dest.Import.title
                             Dest.Edit.route -> Dest.Edit.title
                             "edit/{id}" -> Dest.Edit.title
+                            Dest.OwnerEdit.route -> Dest.OwnerEdit.title
                             else -> "Estakada"
                         }
                         Text(title)
@@ -332,6 +334,10 @@ fun AppShell(
                     onAdd = {
                         exportStatus = null
                         navController.navigate(Dest.Edit.route)
+                    },
+                    onAddOwner = {
+                        exportStatus = null
+                        navController.navigate(Dest.OwnerEdit.route)
                     }
                 )
             }
@@ -356,6 +362,13 @@ fun AppShell(
                 )
             }
 
+            composable(Dest.Info.route) {
+                SummaryScreen(
+                    rowsFlow = graph.db.registryDao().observeAll(),
+                    onClose = { navController.popBackStack() }
+                )
+            }
+
             composable(Dest.Edit.route) {
                 RegistryEditScreen(
                     context = context,
@@ -370,6 +383,15 @@ fun AppShell(
                     context = context,
                     db = graph.db,
                     stableId = entry.arguments?.getString("id"),
+                    onDone = { navController.popBackStack() }
+                )
+            }
+
+            composable(Dest.OwnerEdit.route) {
+                OwnerEditScreen(
+                    context = context,
+                    db = graph.db,
+                    ownerId = null,
                     onDone = { navController.popBackStack() }
                 )
             }

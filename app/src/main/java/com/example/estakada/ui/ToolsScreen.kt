@@ -18,7 +18,8 @@ fun ToolsScreen(
     onGoRegistry: () -> Unit,
     onExport: () -> Unit,
     onClearDb: () -> Unit,
-    onAdd: () -> Unit
+    onAdd: () -> Unit,
+    onAddOwner: () -> Unit
 ) {
     var showClearDialog by remember { mutableStateOf(false) }
     var confirmText by remember { mutableStateOf("") }
@@ -85,6 +86,13 @@ fun ToolsScreen(
             modifier = Modifier.fillMaxWidth(),
             onClick = onAdd
         ) { Text("Добавить запись") }
+
+        Spacer(Modifier.height(10.dp))
+
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onAddOwner
+        ) { Text("Добавить собственника") }
 
         Spacer(Modifier.height(24.dp))
 
