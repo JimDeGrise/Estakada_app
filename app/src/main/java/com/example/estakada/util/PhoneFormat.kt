@@ -7,7 +7,7 @@ object PhoneFormat {
     fun isStorage(phone: String): Boolean = STORAGE_RE.matches(phone)
 
     /**
-     * Tries to normalise any phone string to storage format (+7XXXXXXXXXX).
+     * Tries to normalize any phone string to storage format (+7XXXXXXXXXX).
      * Accepts:
      *   - 11 digits starting with 7 or 8  (e.g. 79528143808, 89528143808)
      *   - 10 digits                        (e.g. 9528143808)

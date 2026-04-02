@@ -22,14 +22,14 @@ import java.util.UUID
 private fun parseShare(raw: String): Double? =
     raw.trim().replace(',', '.').toDoubleOrNull()
 
-/** Normalise objectNumber: uppercase the first Cyrillic letter, keep rest as-is. */
+/** Normalize objectNumber: uppercase the first Cyrillic letter, keep rest as-is. */
 private fun normalizeObjectNumber(raw: String): String {
     val t = raw.trim()
     if (t.isEmpty()) return t
     return t[0].uppercaseChar() + t.substring(1)
 }
 
-/** Pattern: single uppercase Cyrillic letter, dash, one or more digits. */
+/** Pattern: single uppercase Cyrillic letter, dash, one or more digits. E.g. "А-12" */
 private val OBJECT_NUMBER_RE = Regex("""^[А-ЯЁ]-\d+$""")
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,6 +58,7 @@ fun RegistryEditScreen(
 
     var status by remember { mutableStateOf<String?>(null) }
     var phoneError by remember { mutableStateOf<String?>(null) }
+    var objectNumberWarning by remember { mutableStateOf<String?>(null) }
 
     // удаление (защита вводом "DEL")
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -102,7 +103,7 @@ fun RegistryEditScreen(
                         rawPhone // can't normalize — keep as-is for display
                     }
                 }
-                phone = PhoneFormat.toDisplay(storedPhone).takeIf { PhoneFormat.isStorage(storedPhone) } ?: storedPhone
+                phone = PhoneFormat.toDisplay(storedPhone)
             }
         }
 
@@ -141,7 +142,21 @@ fun RegistryEditScreen(
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(value = floor, onValueChange = { floor = it }, label = { Text("Этаж") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = objectNumber, onValueChange = { objectNumber = it }, label = { Text("Помещение") }, modifier = Modifier.fillMaxWidth())
+        Column {
+            OutlinedTextField(
+                value = objectNumber,
+                onValueChange = { objectNumber = it; objectNumberWarning = null },
+                label = { Text("Помещение") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            if (objectNumberWarning != null) {
+                Text(
+                    objectNumberWarning!!,
+                    color = MaterialTheme.colorScheme.secondary,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
         OutlinedTextField(value = sizesRaw, onValueChange = { sizesRaw = it }, label = { Text("Площадь (например 29,9)") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(
             value = shareText,
@@ -189,7 +204,7 @@ fun RegistryEditScreen(
                     } else {
                         val normalized = PhoneFormat.normalize(rawPhone)
                         if (normalized == null) {
-                            phoneError = "Некорректный формат. Пример: +79528143808"
+                            phoneError = "Некорректный формат. Пример: +7 (952) 814-38-08"
                             return@Button
                         }
                         normalized
@@ -197,6 +212,9 @@ fun RegistryEditScreen(
 
                     // Normalize objectNumber: uppercase first letter
                     val normalizedObjectNumber = normalizeObjectNumber(objectNumber)
+                    objectNumberWarning = if (normalizedObjectNumber.isNotEmpty() && !OBJECT_NUMBER_RE.matches(normalizedObjectNumber)) {
+                        "Рекомендуемый формат: буква-цифра (например А-12)"
+                    } else null
 
                     scope.launch {
                         status = "Сохранение..."

@@ -122,7 +122,7 @@ fun OwnerEditScreen(
                     } else {
                         val normalized = PhoneFormat.normalize(rawPhone)
                         if (normalized == null) {
-                            phoneError = "Некорректный формат. Используйте +7XXXXXXXXXX"
+                            phoneError = "Некорректный формат. Пример: +7 (952) 814-38-08"
                             return@Button
                         }
                         normalized
